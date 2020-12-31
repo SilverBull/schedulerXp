@@ -22,6 +22,13 @@ let lastRowId = 2;
 //     canCollide = el.target.checked;
 //   });
 
+function showAllItems(){
+  const allItems = GSTC.api.getAllItems();
+  for (const itemId in allItems) {
+    console.log(itemId);
+  }
+}
+
 function isCollision(item) {
   const allItems = gstc.api.getAllItems();
   for (const itemId in allItems) {
@@ -56,7 +63,7 @@ function isCollision(item) {
 const movementPluginConfig = {
   events: {
     onStart({ items }) {
-      console.log('Moving start', items.after);
+      console.log("Moving start", items.after);
       return items.after;
     },
     onMove({ items }) {
@@ -75,7 +82,7 @@ const movementPluginConfig = {
       });
     },
     onEnd({ items }) {
-      console.log('Moving done', items.after);
+      console.log("Moving done", items.after);
       return items.after;
     },
   },
@@ -90,7 +97,7 @@ const movementPluginConfig = {
 const resizingPluginConfig = {
   events: {
     onStart({ items }) {
-      console.log('Resizing start', items.after);
+      console.log("Resizing start", items.after);
       return items.after;
     },
     onResize({ items }) {
@@ -106,7 +113,8 @@ const resizingPluginConfig = {
       return filtered;
     },
     onEnd({ items }) {
-      console.log('Resizing done', items.after);
+      console.log("Resizing done", items.after);
+      // showAllItems();
       return items.after;
     },
   },
@@ -125,7 +133,7 @@ const resizingPluginConfig = {
 };
 
 function isItemResizable(item) {
-  if (typeof item.resizable === 'boolean') return item.resizable;
+  if (typeof item.resizable === "boolean") return item.resizable;
   return true;
 }
 
@@ -160,16 +168,16 @@ function limitTime(item, oldItem) {
 
 function snapToTimeSeparately(item) {
   if (!item.snap) return item;
-  const start = GSTC.api.date(item.time.start).startOf('day').add(10, 'hour');
-  const end = GSTC.api.date(item.time.end).startOf('day').add(18, 'hour');
+  const start = GSTC.api.date(item.time.start).startOf("day").add(10, "hour");
+  const end = GSTC.api.date(item.time.end).startOf("day").add(18, "hour");
   item.time.start = start.valueOf();
   item.time.end = end.valueOf();
   // to change other properties than time we need to update item
   // because resizing-items plugin only works on time property
   state.update(
     `config.chart.items.${item.id}.label`,
-    `From ${start.format('YYYY-MM-DD HH:mm')} to ${end.format(
-      'YYYY-MM-DD HH:mm'
+    `From ${start.format("YYYY-MM-DD HH:mm")} to ${end.format(
+      "YYYY-MM-DD HH:mm"
     )}`
   );
   return item;
@@ -178,10 +186,10 @@ function snapToTimeSeparately(item) {
 const hours = [
   {
     zoomTo: 100, // we want to display this format for all zoom levels until 100
-    period: 'hour',
+    period: "hour",
     periodIncrement: 1,
     format({ timeStart }) {
-      return timeStart.format('HH:mm DD MMMM YYYY'); // full list of formats: https://day.js.org/docs/en/display/format
+      return timeStart.format("HH:mm DD MMMM YYYY"); // full list of formats: https://day.js.org/docs/en/display/format
     },
   },
 ];
@@ -189,11 +197,13 @@ const hours = [
 const minutes = [
   {
     zoomTo: 100, // we want to display this format for all zoom levels until 100
-    period: 'minute',
+    period: "minute",
     periodIncrement: 15,
     main: true,
     format({ timeStart, vido }) {
-      return vido.html`<div style="text-align:center;">${timeStart.format('HH:mm')}</div>`; // full list of formats: https://day.js.org/docs/en/display/format
+      return vido.html`<div style="text-align:center;">${timeStart.format(
+        "HH:mm"
+      )}</div>`; // full list of formats: https://day.js.org/docs/en/display/format
     },
   },
 ];
@@ -214,9 +224,14 @@ let newRows = [];
 const colori = { MEDICAL: "red", DIGITAL: "blue", PROGETTAZIONE: "green" };
 let dipendenze = [];
 let startDayjs;
+let endDayjs;
+let oreTotali = 0;
 $.get(
   "/schedulerXp/assets/json/calendar/json_insert_commessa.php",
   function (response) {
+    endDayjs = GSTC.api.date(
+      response["Componenti"]["1"]["Data consegna effettiva"]
+    );
     console.log(response);
     console.log(response["Componenti"]);
     // handle your response here
@@ -246,7 +261,11 @@ $.get(
               }
             }
           }
+          if (element["Codice lavorazione"].toString() == "0") {
+            oreTotali += element2["Ore lavorazione"];
+          }
         });
+        console.log(oreTotali);
         if (element["Dipendenza da"] !== "") {
           // for (var k in element["Dipendenza da"]) {
           //   dipendenze.push(
@@ -257,8 +276,10 @@ $.get(
             .date(newItems[element["Dipendenza da"]["1"][0]].time.end)
             .startOf("hour");
         } else {
-          startDayjs = GSTC.api
-            .date(response["Componenti"]["1"]["Data consegna effettiva"]);
+          startDayjs = GSTC.api.date(
+            response["Componenti"]["1"]["Data consegna effettiva"]
+          );
+          // .minus(oreTotali, "hour");
         }
         var newItem = {
           id: element["Codice lavorazione"].toString(),
@@ -326,8 +347,8 @@ $.get(
         calendarLevels: [hours, minutes],
         time: {
           zoom: 13,
-          from: GSTC.api.date('2020-12-03').startOf('day').valueOf(),
-          to: GSTC.api.date('2020-12-03').endOf('day').valueOf(),
+          from: startDayjs.valueOf(),
+          to: endDayjs.valueOf(),
         },
       },
     };

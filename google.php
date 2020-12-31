@@ -396,34 +396,13 @@ include_once 'header.php';
         return days * 24 * 60 * 60 * 1000;
     }
 
+    function hoursToMilliseconds(hours) {
+        return hours * 60 * 60 * 1000;
+    }
+
     function drawChart() {
 
-        var data = new google.visualization.DataTable();
-        data.addColumn('string', 'Task ID');
-        data.addColumn('string', 'Task Name');
-        data.addColumn('string', 'Resource');
-        data.addColumn('date', 'Start Date');
-        data.addColumn('date', 'End Date');
-        data.addColumn('number', 'Duration');
-        data.addColumn('number', 'Percent Complete');
-        data.addColumn('string', 'Dependencies');
-
-        data.addRows([
-            // ['Research', 'Find sources',
-            //     new Date(2015, 0, 1), new Date(2015, 0, 5), null, 100, null
-            // ],
-            // ['Write', 'Write paper',
-            //     null, new Date(2015, 0, 9), daysToMilliseconds(3), 25, 'Research,Outline'
-            // ],
-            // ['Cite', 'Create bibliography',
-            //     null, new Date(2015, 0, 7), daysToMilliseconds(1), 20, 'Research'
-            // ],
-            // ['Complete', 'Hand in paper',
-            //     null, new Date(2015, 0, 10), daysToMilliseconds(1), 0, 'Cite,Write'
-            // ],
-            // ['Outline', 'Outline paper',
-            //     null, new Date(2015, 0, 6), daysToMilliseconds(1), 100, 'Research'
-            // ],
+        const buoni = [
             [
                 'DIGITAL1', 'Invio reference/modelli/schemi', 'DIGITAL',
                 new Date(2020, 11, 07), new Date(2020, 11, 09), null, 100, null
@@ -460,7 +439,87 @@ include_once 'header.php';
                 'Referente2', 'Invio al cliente', 'Referente',
                 null, new Date(2020, 11, 29), daysToMilliseconds(3), 91, null
             ],
-        ]);
+        ];
+
+        var data = new google.visualization.DataTable();
+        var elements = [];
+
+        data.addColumn('string', 'Task ID');
+        data.addColumn('string', 'Task Name');
+        data.addColumn('string', 'Resource');
+        data.addColumn('date', 'Start Date');
+        data.addColumn('date', 'End Date');
+        data.addColumn('number', 'Duration');
+        data.addColumn('number', 'Percent Complete');
+        data.addColumn('string', 'Dependencies');
+        const colori = {
+            MEDICAL: "red",
+            DIGITAL: "blue",
+            PROGETTAZIONE: "green"
+        };
+        let dipendenze = [];
+        let oreTotali = 0;
+        $.get(
+            "/schedulerXp/assets/json/calendar/json_insert_commessa.php",
+            function(response) {
+                // handle your response here
+                var key,
+                    count = 0;
+
+                // Check if every key has its own property
+                for (key in response["Componenti"]) {
+                    if (response["Componenti"].hasOwnProperty(key))
+                        // If the key is found, add it to the total length
+                        count++;
+                }
+                for (key in response["Componenti"]) {
+                    const componente = response["Componenti"][key];
+                    const risorse = componente["Lavorazioni"];
+                    console.log(risorse);
+                    risorse.forEach((element) => {
+                        risorse.forEach((element2) => {
+                            if (element2["Dipendenza da"] !== "") {
+                                for (var l in element2["Dipendenza da"]) {
+                                    if (
+                                        element["Codice lavorazione"].toString() ==
+                                        element2["Dipendenza da"][l][0].toString()
+                                    ) {
+                                        dipendenze.push(
+                                            element2["Codice lavorazione"].toString()
+                                        );
+                                    }
+                                }
+                            }
+                            if (element["Codice lavorazione"].toString() == "0") {
+                                oreTotali += element2["Ore lavorazione"];
+                            }
+                        });
+                        var newItem = [
+                            element["Codice lavorazione"].toString(),
+                            element["Descrizione lavorazione"],
+                            element["Settore"]["Descrizione settore"],
+                            new Date(response["Componenti"]["1"]["Data consegna effettiva"]),
+                            null,
+                            hoursToMilliseconds(element["Ore lavorazione"]),
+                            null,
+                            dipendenze
+                            // 'DIGITAL1', 'Invio reference/modelli/schemi', 'DIGITAL', new Date(2020, 11, 07), new Date(2020, 11, 09), null, 100, null
+                        ];
+                        elements.push(newItem);
+                        // var newRow = {
+                        //   id: element["Codice lavorazione"].toString(),
+                        //   label: element["Descrizione lavorazione"],
+                        // };
+                        // newRows.push(newRow);
+                        dipendenze = [];
+                    });
+                }
+            });
+        console.log('json: ', elements);
+        console.log('a mano: ', buoni);
+        // data.addRows(elements);
+
+        data.addRows(buoni);
 
         var options = {
             height: 800
