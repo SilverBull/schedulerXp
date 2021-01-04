@@ -22,7 +22,7 @@ let lastRowId = 2;
 //     canCollide = el.target.checked;
 //   });
 
-function showAllItems(){
+function showAllItems() {
   const allItems = GSTC.api.getAllItems();
   for (const itemId in allItems) {
     console.log(itemId);
@@ -82,14 +82,32 @@ const movementPluginConfig = {
       });
     },
     onEnd({ items }) {
-      console.log("Moving done", items.after);
-      return items.after;
+      // console.log("Moving done", items.after);
+      // return items.after;
+      const test = items.after.map((item, index) => {
+        if (
+          confirm(`Stai modificando l'evento ${item.label}
+          Data Iniziale: ${new Date(
+            items.initial[index].time.start
+          ).toLocaleString()} - ${new Date(
+            items.initial[index].time.end
+          ).toLocaleString()}
+          Data Modificata: ${new Date(
+            item.time.start
+          ).toLocaleString()} - ${new Date(item.time.end).toLocaleString()}`)
+        ) {
+          return item;
+        } else {
+          return items.initial[index];
+        }
+      });
+      return test;
     },
   },
   snapToTime: {
     start({ startTime, time }) {
       // return startTime.startOf("day").add(12, "hour");
-      return startTime.startOf("hour");
+      return startTime;
     },
   },
 };
@@ -97,7 +115,6 @@ const movementPluginConfig = {
 const resizingPluginConfig = {
   events: {
     onStart({ items }) {
-      console.log("Resizing start", items.after);
       return items.after;
     },
     onResize({ items }) {
@@ -113,9 +130,25 @@ const resizingPluginConfig = {
       return filtered;
     },
     onEnd({ items }) {
-      console.log("Resizing done", items.after);
-      // showAllItems();
-      return items.after;
+      console.log("Resizing start", items);
+      const test = items.after.map((item, index) => {
+        if (
+          confirm(`Stai modificando l'evento ${item.label}
+          Data Iniziale: ${new Date(
+            items.initial[index].time.start
+          ).toLocaleString()} - ${new Date(
+            items.initial[index].time.end
+          ).toLocaleString()}
+          Data Modificata: ${new Date(
+            item.time.start
+          ).toLocaleString()} - ${new Date(item.time.end).toLocaleString()}`)
+        ) {
+          return item;
+        } else {
+          return items.initial[index];
+        }
+      });
+      return test;
     },
   },
   snapToTime: {
@@ -166,6 +199,43 @@ function limitTime(item, oldItem) {
   return item;
 }
 
+function clickAction(element, data) {
+  function onClick(event) {
+    // data variable will be updated in update method below so it will be always actual
+    let category;
+      if (data.item.style.background === "blue") {
+        category = "DIGITAL";
+      }
+      if (data.item.style.background === "green") {
+        category =  "PROGETTAZIONE";
+      }
+      if (data.item.style.background === "undefined") {
+        category =  "MEDICAL";
+      }
+      if (data.item.style.background === "orange") {
+        category =  "INVIO AL CLIENTE";
+      }
+    alert(`Evento: ${data.item.label}
+    Range Data: ${new Date(data.item.time.start).toLocaleString()} - ${new Date(
+      data.item.time.end
+    ).toLocaleString()}
+    Durata (h): ${(data.item.time.end - data.item.time.start) / 60 / 60 / 1000}
+    Categoria: ${category}`);
+  }
+
+  element.addEventListener("click", onClick);
+
+  return {
+    update(element, newData) {
+      data = newData; // data from parent scope updated
+    },
+
+    destroy(element, data) {
+      element.removeEventListener("click", onClick);
+    },
+  };
+}
+
 function snapToTimeSeparately(item) {
   if (!item.snap) return item;
   const start = GSTC.api.date(item.time.start).startOf("day").add(10, "hour");
@@ -189,7 +259,7 @@ const hours = [
     period: "hour",
     periodIncrement: 1,
     format({ timeStart }) {
-      return timeStart.format("HH:mm DD MMMM YYYY"); // full list of formats: https://day.js.org/docs/en/display/format
+      return timeStart.format("DD MMMM YYYY"); // full list of formats: https://day.js.org/docs/en/display/format
     },
   },
 ];
@@ -223,6 +293,7 @@ let newItems = [];
 let newRows = [];
 const colori = { MEDICAL: "red", DIGITAL: "blue", PROGETTAZIONE: "green" };
 let dipendenze = [];
+let firstDay;
 let startDayjs;
 let endDayjs;
 let oreTotali = 0;
@@ -262,7 +333,11 @@ $.get(
             }
           }
           if (element["Codice lavorazione"].toString() == "0") {
+            if(element2["Ore lavorazione"] == 0){
+              oreTotali += 1;
+            } else {
             oreTotali += element2["Ore lavorazione"];
+            }
           }
         });
         console.log(oreTotali);
@@ -276,10 +351,23 @@ $.get(
             .date(newItems[element["Dipendenza da"]["1"][0]].time.end)
             .startOf("hour");
         } else {
-          startDayjs = GSTC.api.date(
+          var dataConsegna = new Date(
             response["Componenti"]["1"]["Data consegna effettiva"]
           );
-          // .minus(oreTotali, "hour");
+          console.log(dataConsegna);
+          const giorniAppossimativi = oreTotali / 8;
+          var dataInizio = new Date(
+            dataConsegna.getTime() - giorniAppossimativi * 24 * 60 * 60 * 1000
+          );
+          console.log(dataInizio);
+          startDayjs = GSTC.api.date(dataInizio.getTime());
+          firstDay = startDayjs;
+        }
+        let oreLavoro;
+        if(element["Ore lavorazione"] == 0){
+          oreLavoro = 1;
+        } else {
+          oreLavoro = element["Ore lavorazione"];
         }
         var newItem = {
           id: element["Codice lavorazione"].toString(),
@@ -289,7 +377,7 @@ $.get(
             start: startDayjs.valueOf(),
             end: startDayjs
               .clone()
-              .add(element["Ore lavorazione"], "hour")
+              .add(oreLavoro, "hour")
               .valueOf(),
           },
           dependant: dipendenze,
@@ -310,6 +398,8 @@ $.get(
       });
     }
 
+    const date = GSTC.api.date;
+
     // Configuration object
     const config = {
       // for free key for your domain please visit https://gstc.neuronet.io/free-key
@@ -318,6 +408,9 @@ $.get(
       licenseKey:
         "====BEGIN LICENSE KEY====\nib1KONTKu7juyzV3eVk3ZQsLf3cMlAbkRcMbEfqtMKZr4whjAPdQXJRgGqWPgcbTUnZl9a+3dDxKYD0vyOJu8beez0jQGVSrTINYWvnSSjU7/B0YlpVbXmkebGfkpSHRano65rxM49RLMcM+jGiX9RwDhg6gX4VvatRsMBBcTdfllFE1/aWA9CbZvZsTzk5Snm/3eZtiTN6bd5WrzNNoDRBgJElmnrYQ0JYkGIZlhZqE1PDKEF7sIUZe75+ai5FynuJPtPfrSq/pLWSlHjRpLmosjEKseyrjSYwAVURQZKtX6cjKGdP8NTQJLpVy2CWyiEvKn4JgFvc8qBbuOeAM0w==||U2FsdGVkX1/kGtD+keAPx2k4u5Z+5yC8d4FJKg5OY20D/dVN218OOeC+PHpqsOI/yLNkc6UAFhumu/OAGchXOddRtPwD55YJIk0N/Y9BahM=\nZtynleMOKEvq2cINqJXo9mosh0cO3FmH3/0L0GJ6YZNo7G7HQpr1AaD3yPEREtnAHPrDnaehhRMNy4ace4FEITOd0Fk+PgdnT6vS3LutC4mTACsdKlV/s8QbDbsoehZ8odA4amfK0Sai2AL+BB8I3JalflpOvmHFw5yl5Ml4W/EOcYhN6WdoCNEp5Egbwrbh2igC2xn19gowNl+pqRhCrhwCWZ3hTQPl9/YOA/DrUDMD044tul6mCVFMyAqDtjDn9ChsotIkW8E3FNkzJA8QKlukXh/V4+JA7kWst2NFQOm1LDVS5ND5ZKmaVcL7ou/e4ee6B67jhQ+mf2zuwshFAA==\n====END LICENSE KEY====",
 
+      actions: {
+        "chart-timeline-items-row-item": [clickAction],
+      },
       plugins: [
         TimelinePointer({}), // timeline pointer must go first before selection, resizing and movement
         Selection(),
@@ -345,16 +438,31 @@ $.get(
         // items: GSTC.api.fromArray(itemsFromDB),
         items: GSTC.api.fromArray(newItems),
         calendarLevels: [hours, minutes],
+        // time: {
+        //   zoom: 13,
+        //   from: firstDay.startOf("hour").valueOf(),
+        //   to: endDayjs.valueOf(),
+        // },
         time: {
-          zoom: 13,
-          from: startDayjs.valueOf(),
-          to: endDayjs.valueOf(),
+          zoom: 14,
+          onLevelDates: [({ dates }) => dates],
+          onCurrentViewLevelDates: [({ dates }) => dates],
+          onDate: [({ date }) => date],
         },
       },
     };
 
     // Generate GSTC state from configuration object
     const state = GSTC.api.stateFromConfig(config);
+
+    setTimeout(() => {
+      // change month to february after 4sec
+      state.update("config.chart.time", (time) => {
+        time.from = firstDay.startOf("hour").valueOf();
+        time.to = endDayjs.valueOf();
+        return time;
+      });
+    }, 100);
 
     // for testing
     // @ts-ignore
@@ -438,7 +546,7 @@ const columnsFromDB = [
 
 //for testing
 // @ts-ignore
-window.gstc = app;
+// window.gstc = app;
 
 function addNewRow() {
   const row = generateNewRow();
