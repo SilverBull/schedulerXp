@@ -5,8 +5,10 @@ import { Plugin as ItemMovement } from "./assets/js/gantt-schedule/plugins/item-
 import { Plugin as ItemResizing } from "./assets/js/gantt-schedule/plugins/item-resizing.esm.min.js";
 import { Plugin as DependencyLines } from "./assets/js/gantt-schedule/plugins/dependency-lines.esm.min.js";
 
+let state;
 let canChangeRow = false;
 let canCollide = true;
+let levelZoom = 14;
 
 let lastItemId = 3;
 let lastRowId = 2;
@@ -209,8 +211,8 @@ function clickAction(element, data) {
       if (data.item.style.background === "green") {
         category =  "PROGETTAZIONE";
       }
-      if (data.item.style.background === "undefined") {
-        category =  "MEDICAL";
+      if (data.item.style.background === "red") {
+        category =  "MEDICA";
       }
       if (data.item.style.background === "orange") {
         category =  "INVIO AL CLIENTE";
@@ -291,12 +293,13 @@ const rowsFromDB = [
 
 let newItems = [];
 let newRows = [];
-const colori = { MEDICAL: "red", DIGITAL: "blue", PROGETTAZIONE: "green" };
+const colori = { MEDICA: "red", DIGITAL: "blue", PROGETTAZIONE: "green" };
 let dipendenze = [];
 let firstDay;
 let startDayjs;
 let endDayjs;
 let oreTotali = 0;
+
 $.get(
   "/schedulerXp/assets/json/calendar/json_insert_commessa.php",
   function (response) {
@@ -444,7 +447,7 @@ $.get(
         //   to: endDayjs.valueOf(),
         // },
         time: {
-          zoom: 14,
+          zoom: levelZoom,
           onLevelDates: [({ dates }) => dates],
           onCurrentViewLevelDates: [({ dates }) => dates],
           onDate: [({ date }) => date],
@@ -453,7 +456,7 @@ $.get(
     };
 
     // Generate GSTC state from configuration object
-    const state = GSTC.api.stateFromConfig(config);
+    state = GSTC.api.stateFromConfig(config);
 
     setTimeout(() => {
       // change month to february after 4sec
@@ -475,6 +478,20 @@ $.get(
     });
   }
 );
+
+function zoomIn(){
+  state.update("config.chart.time.zoom", (zoom) => {
+    zoom = zoom - 0.1;
+    return zoom;
+  });
+}
+
+function zoomOut(){
+  state.update("config.chart.time.zoom", (zoom) => {
+    zoom = zoom + 0.1;
+    return zoom;
+  });
+}
 
 const itemsFromDB = [
   {
@@ -588,5 +605,78 @@ function generateNewItem() {
   };
 }
 
+function test(){
+  state.update("config.chart.items", (items) => {
+    console.log(items);
+    return items;
+  });
+}
+
+function testMEDICA(){
+  let settore = 'DIGITAL';
+  let newList = [];
+  let newListRow = [];
+  $.get(
+    "/schedulerXp/assets/json/calendar/json_insert_commessa.php",
+    function (response) {
+      endDayjs = GSTC.api.date(
+        response["Componenti"]["1"]["Data consegna effettiva"]
+      );
+      // handle your response here
+      var key,
+        count = 0;
+  
+      // Check if every key has its own property
+      for (key in response["Componenti"]) {
+        if (response["Componenti"].hasOwnProperty(key))
+          // If the key is found, add it to the total length
+          count++;
+      }
+      for (key in response["Componenti"]) {
+        const componente = response["Componenti"][key];
+        const risorse = componente["Lavorazioni"];
+        risorse.forEach((element) => {
+          console.log(element["Settore"]["Descrizione settore"]);
+          if(element["Settore"]["Descrizione settore"] == settore){
+          var newItem = {
+            id: element["Codice lavorazione"].toString(),
+            label: element["Descrizione lavorazione"],
+            rowId: element["Codice lavorazione"].toString(),
+            time: {
+              start: startDayjs.valueOf(),
+              end: startDayjs
+                .clone()
+                .add(2, "hour")
+                .valueOf(),
+            },
+            style: {
+              background:
+                element["Descrizione lavorazione"] === "Invio al cliente"
+                  ? "orange"
+                  : colori[element["Settore"]["Descrizione settore"]],
+            },
+          };
+          console.log(newItem);
+          newList.push(newItem);
+          var newRow = {
+            id: element["Codice lavorazione"].toString(),
+            label: element["Descrizione lavorazione"],
+          };
+          newListRow.push(newRow);
+        }
+        });
+      }
+      console.log(newList);
+      state.update("config.chart.items", (items) => {
+        items = newList;
+        return items;
+      });
+    });
+}
+
 // document.getElementById("add-item").addEventListener("click", addNewItem);
 // document.getElementById("add-row").addEventListener("click", addNewRow);
+document.getElementById("zoomIn").addEventListener("click", zoomIn);
+document.getElementById("zoomOut").addEventListener("click", zoomOut);
+document.getElementById("test").addEventListener("click", test);
+document.getElementById("MEDICA").addEventListener("click", testMEDICA);
