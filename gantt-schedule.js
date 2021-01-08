@@ -13,6 +13,17 @@ let levelZoom = 14;
 let lastItemId = 3;
 let lastRowId = 2;
 
+var vars = [];
+$(document).ready(function () {
+  var parts = window.location.href.replace(
+    /[?&]+([^=&]+)=([^&]*)/gi,
+    function (m, key, value) {
+      // vars[key] = value;
+      vars.push(value);
+    }
+  );
+});
+
 // document
 //   .getElementById("can-change-row")
 //   .addEventListener("change", function (el) {
@@ -205,18 +216,18 @@ function clickAction(element, data) {
   function onClick(event) {
     // data variable will be updated in update method below so it will be always actual
     let category;
-      if (data.item.style.background === "blue") {
-        category = "DIGITAL";
-      }
-      if (data.item.style.background === "green") {
-        category =  "PROGETTAZIONE";
-      }
-      if (data.item.style.background === "red") {
-        category =  "MEDICA";
-      }
-      if (data.item.style.background === "orange") {
-        category =  "INVIO AL CLIENTE";
-      }
+    if (data.item.style.background === "blue") {
+      category = "DIGITAL";
+    }
+    if (data.item.style.background === "green") {
+      category = "PROGETTAZIONE";
+    }
+    if (data.item.style.background === "red") {
+      category = "MEDICA";
+    }
+    if (data.item.style.background === "orange") {
+      category = "INVIO AL CLIENTE";
+    }
     alert(`Evento: ${data.item.label}
     Range Data: ${new Date(data.item.time.start).toLocaleString()} - ${new Date(
       data.item.time.end
@@ -292,114 +303,127 @@ const rowsFromDB = [
 ];
 
 let newItems = [];
+let allItems = [];
 let newRows = [];
 const colori = { MEDICA: "red", DIGITAL: "blue", PROGETTAZIONE: "green" };
 let dipendenze = [];
-let firstDay;
+let firstDay = 0;
 let startDayjs;
-let endDayjs;
+let endDayjs = 0;
 let oreTotali = 0;
 
 $.get(
   "/schedulerXp/assets/json/calendar/json_insert_commessa.php",
   function (response) {
-    endDayjs = GSTC.api.date(
-      response["Componenti"]["1"]["Data consegna effettiva"]
-    );
-    console.log(response);
-    console.log(response["Componenti"]);
-    // handle your response here
-    var key,
-      count = 0;
+    console.log('JSON: ', response);
+    response.forEach((progetto) => {
+      if (new Date(progetto["Data consegna prevista"]).getTime() > endDayjs) {
+        endDayjs = GSTC.api.date(progetto["Data consegna prevista"]);
+      }
+      console.log('Progetto: ', progetto);
+      console.log('Componenti: ', progetto["Componenti"]);
+      // handle your response here
+      var key,
+        count = 0;
 
-    // Check if every key has its own property
-    for (key in response["Componenti"]) {
-      if (response["Componenti"].hasOwnProperty(key))
-        // If the key is found, add it to the total length
-        count++;
-    }
-    for (key in response["Componenti"]) {
-      const componente = response["Componenti"][key];
-      const risorse = componente["Lavorazioni"];
-      risorse.forEach((element) => {
-        risorse.forEach((element2) => {
-          if (element2["Dipendenza da"] !== "") {
-            for (var l in element2["Dipendenza da"]) {
-              if (
-                element["Codice lavorazione"].toString() ==
-                element2["Dipendenza da"][l][0].toString()
-              ) {
-                dipendenze.push(
-                  GSTC.api.GSTCID(element2["Codice lavorazione"].toString())
-                );
+      // Check if every key has its own property
+      for (key in progetto["Componenti"]) {
+        if (progetto["Componenti"].hasOwnProperty(key))
+          // If the key is found, add it to the total length
+          count++;
+      }
+      for (key in progetto["Componenti"]) {
+        const componente = progetto["Componenti"][key];
+        const risorse = componente["Lavorazioni"];
+        risorse.forEach((element) => {
+          risorse.forEach((element2) => {
+            if (element2["Dipendenza da"] !== "") {
+              for (var l in element2["Dipendenza da"]) {
+                if (
+                  element["Codice lavorazione"].toString() ==
+                  element2["Dipendenza da"][l][0].toString()
+                ) {
+                  dipendenze.push(
+                    GSTC.api.GSTCID(element2["Codice lavorazione"].toString())
+                  );
+                }
               }
             }
-          }
-          if (element["Codice lavorazione"].toString() == "0") {
-            if(element2["Ore lavorazione"] == 0){
-              oreTotali += 1;
-            } else {
-            oreTotali += element2["Ore lavorazione"];
+            if (element["Codice lavorazione"].toString() == "0") {
+              if (element2["Ore lavorazione"] == 0) {
+                oreTotali += 1;
+              } else {
+                oreTotali += element2["Ore lavorazione"];
+              }
+            }
+          });
+          if (element["Dipendenza da"] !== "") {
+            startDayjs = GSTC.api
+              .date(allItems[element["Dipendenza da"][0][0]].time.end)
+              .startOf("hour");
+          } else {
+            var dataConsegna = new Date(progetto["Data consegna prevista"]);
+            console.log('data consegna: ', element["Codice lavorazione"].toString(), dataConsegna);
+            const giorniAppossimativi = oreTotali / 8;
+            var dataInizio = new Date(
+              dataConsegna.getTime() - giorniAppossimativi * 24 * 60 * 60 * 1000
+            );
+            console.log('data inizio: ',element["Codice lavorazione"].toString(), dataInizio);
+            startDayjs = GSTC.api.date(dataInizio.getTime());
+            if(firstDay === 0){
+              firstDay = startDayjs;
+            }
+            if (dataInizio.getTime() < firstDay) {
+              firstDay = startDayjs;
             }
           }
+          let oreLavoro;
+          if (element["Ore lavorazione"] == 0) {
+            oreLavoro = 1;
+          } else {
+            oreLavoro = element["Ore lavorazione"];
+          }
+          var newItem = {
+            id: element["Codice lavorazione"].toString(),
+            label: element["Descrizione lavorazione"],
+            rowId: element["Codice lavorazione"].toString(),
+            time: {
+              start: startDayjs.valueOf(),
+              end: startDayjs.clone().add(oreLavoro, "hour").valueOf(),
+            },
+            dependant: vars.length > 0 ? "" : dipendenze,
+            style: {
+              background:
+                element["Settore"]["Descrizione settore"] == "" &&
+                element["Settore"]["Flag"] == "Esterno"
+                  ? "orange"
+                  : colori[element["Settore"]["Descrizione settore"]],
+            },
+          };
+          if (vars.length > 0) {
+            if (vars[0] == element["Settore"]["Descrizione settore"]) {
+              newItems.push(newItem);
+            }
+            if (
+              vars[0] == "CLIENTE" &&
+              element["Settore"]["Descrizione settore"] == "" &&
+              element["Settore"]["Flag"] == "Esterno"
+            ) {
+              newItems.push(newItem);
+            }
+          } else {
+            newItems.push(newItem);
+          }
+          allItems.push(newItem);
+          var newRow = {
+            id: element["Codice lavorazione"].toString(),
+            label: element["Descrizione lavorazione"],
+          };
+          newRows.push(newRow);
+          dipendenze = [];
         });
-        console.log(oreTotali);
-        if (element["Dipendenza da"] !== "") {
-          // for (var k in element["Dipendenza da"]) {
-          //   dipendenze.push(
-          //     GSTC.api.GSTCID(element["Dipendenza da"][k][0].toString())
-          //   );
-          // }
-          startDayjs = GSTC.api
-            .date(newItems[element["Dipendenza da"]["1"][0]].time.end)
-            .startOf("hour");
-        } else {
-          var dataConsegna = new Date(
-            response["Componenti"]["1"]["Data consegna effettiva"]
-          );
-          console.log(dataConsegna);
-          const giorniAppossimativi = oreTotali / 8;
-          var dataInizio = new Date(
-            dataConsegna.getTime() - giorniAppossimativi * 24 * 60 * 60 * 1000
-          );
-          console.log(dataInizio);
-          startDayjs = GSTC.api.date(dataInizio.getTime());
-          firstDay = startDayjs;
-        }
-        let oreLavoro;
-        if(element["Ore lavorazione"] == 0){
-          oreLavoro = 1;
-        } else {
-          oreLavoro = element["Ore lavorazione"];
-        }
-        var newItem = {
-          id: element["Codice lavorazione"].toString(),
-          label: element["Descrizione lavorazione"],
-          rowId: element["Codice lavorazione"].toString(),
-          time: {
-            start: startDayjs.valueOf(),
-            end: startDayjs
-              .clone()
-              .add(oreLavoro, "hour")
-              .valueOf(),
-          },
-          dependant: dipendenze,
-          style: {
-            background:
-              element["Descrizione lavorazione"] === "Invio al cliente"
-                ? "orange"
-                : colori[element["Settore"]["Descrizione settore"]],
-          },
-        };
-        newItems.push(newItem);
-        var newRow = {
-          id: element["Codice lavorazione"].toString(),
-          label: element["Descrizione lavorazione"],
-        };
-        newRows.push(newRow);
-        dipendenze = [];
-      });
-    }
+      }
+    });
 
     const date = GSTC.api.date;
 
@@ -479,14 +503,14 @@ $.get(
   }
 );
 
-function zoomIn(){
+function zoomIn() {
   state.update("config.chart.time.zoom", (zoom) => {
     zoom = zoom - 0.1;
     return zoom;
   });
 }
 
-function zoomOut(){
+function zoomOut() {
   state.update("config.chart.time.zoom", (zoom) => {
     zoom = zoom + 0.1;
     return zoom;
@@ -605,73 +629,32 @@ function generateNewItem() {
   };
 }
 
-function test(){
+function test() {
   state.update("config.chart.items", (items) => {
     console.log(items);
     return items;
   });
 }
 
-function testMEDICA(){
-  let settore = 'DIGITAL';
-  let newList = [];
-  let newListRow = [];
-  $.get(
-    "/schedulerXp/assets/json/calendar/json_insert_commessa.php",
-    function (response) {
-      endDayjs = GSTC.api.date(
-        response["Componenti"]["1"]["Data consegna effettiva"]
-      );
-      // handle your response here
-      var key,
-        count = 0;
-  
-      // Check if every key has its own property
-      for (key in response["Componenti"]) {
-        if (response["Componenti"].hasOwnProperty(key))
-          // If the key is found, add it to the total length
-          count++;
-      }
-      for (key in response["Componenti"]) {
-        const componente = response["Componenti"][key];
-        const risorse = componente["Lavorazioni"];
-        risorse.forEach((element) => {
-          console.log(element["Settore"]["Descrizione settore"]);
-          if(element["Settore"]["Descrizione settore"] == settore){
-          var newItem = {
-            id: element["Codice lavorazione"].toString(),
-            label: element["Descrizione lavorazione"],
-            rowId: element["Codice lavorazione"].toString(),
-            time: {
-              start: startDayjs.valueOf(),
-              end: startDayjs
-                .clone()
-                .add(2, "hour")
-                .valueOf(),
-            },
-            style: {
-              background:
-                element["Descrizione lavorazione"] === "Invio al cliente"
-                  ? "orange"
-                  : colori[element["Settore"]["Descrizione settore"]],
-            },
-          };
-          console.log(newItem);
-          newList.push(newItem);
-          var newRow = {
-            id: element["Codice lavorazione"].toString(),
-            label: element["Descrizione lavorazione"],
-          };
-          newListRow.push(newRow);
-        }
-        });
-      }
-      console.log(newList);
-      state.update("config.chart.items", (items) => {
-        items = newList;
-        return items;
-      });
-    });
+function testMEDICA() {
+  window.location.href =
+    "https://infosferashk.it/schedulerXp/gantt-schedule2.php?type=MEDICA";
+}
+function testDIGITAL() {
+  window.location.href =
+    "https://infosferashk.it/schedulerXp/gantt-schedule2.php?type=DIGITAL";
+}
+function testPROGETTAZIONE() {
+  window.location.href =
+    "https://infosferashk.it/schedulerXp/gantt-schedule2.php?type=PROGETTAZIONE";
+}
+function testINVIOALCLIENTE() {
+  window.location.href =
+    "https://infosferashk.it/schedulerXp/gantt-schedule2.php?type=CLIENTE";
+}
+function testALL() {
+  window.location.href =
+    "https://infosferashk.it/schedulerXp/gantt-schedule2.php";
 }
 
 // document.getElementById("add-item").addEventListener("click", addNewItem);
@@ -680,3 +663,11 @@ document.getElementById("zoomIn").addEventListener("click", zoomIn);
 document.getElementById("zoomOut").addEventListener("click", zoomOut);
 document.getElementById("test").addEventListener("click", test);
 document.getElementById("MEDICA").addEventListener("click", testMEDICA);
+document.getElementById("DIGITAL").addEventListener("click", testDIGITAL);
+document
+  .getElementById("PROGETTAZIONE")
+  .addEventListener("click", testPROGETTAZIONE);
+document
+  .getElementById("INVIOALCLIENTE")
+  .addEventListener("click", testINVIOALCLIENTE);
+document.getElementById("ALL").addEventListener("click", testALL);

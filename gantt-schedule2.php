@@ -41,7 +41,12 @@ include_once 'header.php';
                                         </li>
                                         <li class="list-group-item list-group-item-warning">
                                             <div class="row">
-                                                <div class="legenda_orange"></div> <button class="btn btn-link" id="INVIO AL CLIENTE">INVIO AL CLIENTE</button>
+                                                <div class="legenda_orange"></div> <button class="btn btn-link" id="INVIOALCLIENTE">INVIO AL CLIENTE</button>
+                                            </div>
+                                        </li>
+                                        <li class="list-group-item list-group-item-secondary">
+                                            <div class="row">
+                                                <div class="legenda_gray"></div> <button class="btn btn-link" id="ALL">VEDI TUTTI</button>
                                             </div>
                                         </li>
                                     </ul>
@@ -79,6 +84,12 @@ include_once 'header.php';
                         width: 25px;
                         height: 25px;
                         background: orange;
+                    }
+
+                    .legenda_gray {
+                        width: 25px;
+                        height: 25px;
+                        background: gray;
                     }
                 </style>
             </div>
