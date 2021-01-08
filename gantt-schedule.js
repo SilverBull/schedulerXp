@@ -228,15 +228,21 @@ function clickAction(element, data) {
     if (data.item.style.background === "orange") {
       category = "INVIO AL CLIENTE";
     }
-    alert(`Evento: ${data.item.label}
+    // alert(`Evento: ${data.item.label}
+    // Range Data: ${new Date(data.item.time.start).toLocaleString()} - ${new Date(
+    //   data.item.time.end
+    // ).toLocaleString()}
+    // Durata (h): ${(data.item.time.end - data.item.time.start) / 60 / 60 / 1000}
+    // Categoria: ${category}`);
+    this.title = `Evento: ${data.item.label}
     Range Data: ${new Date(data.item.time.start).toLocaleString()} - ${new Date(
       data.item.time.end
     ).toLocaleString()}
     Durata (h): ${(data.item.time.end - data.item.time.start) / 60 / 60 / 1000}
-    Categoria: ${category}`);
+    Categoria: ${category}`
   }
 
-  element.addEventListener("click", onClick);
+  element.addEventListener("mouseover", onClick);
 
   return {
     update(element, newData) {
@@ -244,7 +250,7 @@ function clickAction(element, data) {
     },
 
     destroy(element, data) {
-      element.removeEventListener("click", onClick);
+      element.removeEventListener("mouseover", onClick);
     },
   };
 }
@@ -341,7 +347,7 @@ $.get(
               for (var l in element2["Dipendenza da"]) {
                 if (
                   element["Codice lavorazione"].toString() ==
-                  element2["Dipendenza da"][l][0].toString()
+                  element2["Dipendenza da"][l].toString().split('-')[0].trim()
                 ) {
                   dipendenze.push(
                     GSTC.api.GSTCID(element2["Codice lavorazione"].toString())
@@ -420,6 +426,7 @@ $.get(
             label: element["Descrizione lavorazione"],
           };
           newRows.push(newRow);
+          console.log('Dipendenze: ', element["Codice lavorazione"].toString(), dipendenze);
           dipendenze = [];
         });
       }
