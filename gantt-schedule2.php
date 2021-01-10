@@ -22,7 +22,7 @@ include_once 'header.php';
                                 <div class="toolbox">
                                     <button class="btn btn-primary" id="zoomIn">Zoom In</button>
                                     <button class="btn btn-primary" id="zoomOut">Zoom Out</button>
-                                    <button class="btn btn-primary" id="test">Test</button>
+                                    <button class="btn btn-primary" id="generateJSON">Salva JSON</button>
                                     <ul class="list-group list-group-horizontal">
                                         <li class="list-group-item list-group-item-danger">
                                             <div class="row">

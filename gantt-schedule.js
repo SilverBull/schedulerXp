@@ -140,6 +140,12 @@ const resizingPluginConfig = {
         })
         .map((item, index) => limitTime(item, items.before[index]))
         .map((item) => snapToTimeSeparately(item));
+
+        // state.update("config.chart.items", (items) => {
+        //   console.log(items);
+        //   return items;
+        // });
+
       return filtered;
     },
     onEnd({ items }) {
@@ -636,45 +642,67 @@ function generateNewItem() {
   };
 }
 
-function test() {
+function generateJSON() {
   state.update("config.chart.items", (items) => {
     console.log(items);
     return items;
   });
+  var ajaxhttp = new XMLHttpRequest();
+  var url = '/schedulerXp/assets/json/calendar/json_insert_commessa.php';
+  
+  ajaxhttp.open('GET', url, true);
+  ajaxhttp.setRequestHeader('Content-Type', 'application/json');
+  ajaxhttp.onreadystatechange = function(){
+    if(ajaxhttp.readyState == 4 && ajaxhttp.status == 200){
+      var jcontent = JSON.parse(ajaxhttp.responseText);
+      console.log('jcontent: ', jcontent);
+      console.log('ajaxhttp', ajaxhttp);
+      $.ajax({
+        type: 'POST',
+        url: 'writeJSON.php',
+        dataType: 'json',
+        data: {'categories': jcontent},
+        success: function(msg) {
+          alert(msg);
+        }
+      });
+      var link = document.createElement("a");
+          link.download = 'data_out.json';
+          link.href = '/schedulerXp/data_out.json';
+          link.click();
+    }
+  }
+  ajaxhttp.send(null);
+  console.log(ajaxhttp);
 }
 
-function testMEDICA() {
-  window.location.href =
-    "https://infosferashk.it/schedulerXp/gantt-schedule2.php?type=MEDICA";
+function MEDICA() {
+  window.location.href = 'https://' + window.location.host + window.location.pathname + '?type=MEDICA'
 }
-function testDIGITAL() {
-  window.location.href =
-    "https://infosferashk.it/schedulerXp/gantt-schedule2.php?type=DIGITAL";
+function DIGITAL() {
+  window.location.href = 'https://' + window.location.host + window.location.pathname + '?type=DIGITAL';
 }
-function testPROGETTAZIONE() {
-  window.location.href =
-    "https://infosferashk.it/schedulerXp/gantt-schedule2.php?type=PROGETTAZIONE";
+function PROGETTAZIONE() {
+  window.location.href = 'https://' + window.location.host + window.location.pathname + '?type=PROGETTAZIONE';
 }
-function testINVIOALCLIENTE() {
-  window.location.href =
-    "https://infosferashk.it/schedulerXp/gantt-schedule2.php?type=CLIENTE";
+function INVIOALCLIENTE() {
+  window.location.href = 'https://' + window.location.host + window.location.pathname + '?type=CLIENTE';
 }
-function testALL() {
-  window.location.href =
-    "https://infosferashk.it/schedulerXp/gantt-schedule2.php";
+function ALL() {
+  window.location.href = 'https://' + window.location.host + window.location.pathname;
 }
 
 // document.getElementById("add-item").addEventListener("click", addNewItem);
 // document.getElementById("add-row").addEventListener("click", addNewRow);
 document.getElementById("zoomIn").addEventListener("click", zoomIn);
 document.getElementById("zoomOut").addEventListener("click", zoomOut);
-document.getElementById("test").addEventListener("click", test);
-document.getElementById("MEDICA").addEventListener("click", testMEDICA);
-document.getElementById("DIGITAL").addEventListener("click", testDIGITAL);
+document.getElementById("generateJSON").addEventListener("click", generateJSON);
+document.getElementById("MEDICA").addEventListener("click", MEDICA);
+document.getElementById("DIGITAL").addEventListener("click", DIGITAL);
 document
   .getElementById("PROGETTAZIONE")
-  .addEventListener("click", testPROGETTAZIONE);
+  .addEventListener("click", PROGETTAZIONE);
 document
   .getElementById("INVIOALCLIENTE")
-  .addEventListener("click", testINVIOALCLIENTE);
-document.getElementById("ALL").addEventListener("click", testALL);
+  .addEventListener("click", INVIOALCLIENTE);
+document.getElementById("ALL").addEventListener("click", ALL);
